@@ -29,7 +29,7 @@ func init() {
 	flag.StringVar(
 		&regexExpr,
 		"parser",
-		`^(.*)\b`,
+		`^([^\s]*)\b`,
 		"regex used to parse host list",
 	)
 	flag.StringVar(&remoteUser, "user", userName, "remote user")
@@ -84,14 +84,17 @@ func main() {
 	pool := api.CreatePool(numWorkers, remoteCommand, sshConf)
 
 	// schedule workers
-	go pool.ScheduleWorkers()
+	pool.ScheduleWorkers()
 
 	// schedule jobs; i.e. run remoteCommand against hosts
 	go pool.ScheduleJobs(hosts)
 
 	// collect and log results
 	results := make(chan api.Result, len(hosts))
-	go pool.StreamResults(results)
+	go func() {
+		pool.StreamResults(results)
+		close(results)
+	}()
 	for res := range results {
 		if res.Err != nil {
 			syncLogger.Error(fmt.Sprintf("%s\n%s\n%s", res.Host, res.Err.Error(), string(res.Output)))

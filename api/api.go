@@ -11,31 +11,30 @@ type WorkerPool struct {
 	nWorkers    int
 	jobs        chan string
 	results     chan Result
-	done        chan bool
 	cmd         string
 	sshConfig   ssh.ClientConfig
 	wg          sync.WaitGroup
 	isReturning sync.Mutex
+	do func()
 }
 
 func CreatePool(size int, cmd string, config ssh.ClientConfig) *WorkerPool {
-	return &WorkerPool{
+	res := &WorkerPool{
 		nWorkers:  size,
 		jobs:      make(chan string, 2*size),
 		results:   make(chan Result, 2*size),
-		done:      make(chan bool),
 		cmd:       cmd,
 		sshConfig: config,
 	}
+	res.do = res.worker
+	return res
 }
 
 func (wp *WorkerPool) ScheduleWorkers() {
 	for i := 0; i < wp.nWorkers; i++ {
 		wp.wg.Add(1)
-		go wp.worker()
+		go wp.do()
 	}
-	wp.wg.Wait()
-	wp.done <- true
 }
 
 func (wp *WorkerPool) worker() {
@@ -73,34 +72,44 @@ func (wp *WorkerPool) ScheduleJobs(hosts []string) {
 	close(wp.jobs)
 }
 
+func (wp *WorkerPool) Wait() {
+	wp.isReturning.Lock()
+	defer wp.isReturning.Unlock()
+	go func(){
+		wp.wg.Wait()
+		close(wp.results)
+	}()
+	for _ = range wp.results {}
+}
+
 func (wp *WorkerPool) WaitAndReturnResults() []Result {
 	var results []Result
 	wp.isReturning.Lock()
 	defer wp.isReturning.Unlock()
 
-	for {
-		select {
-		case res := <-wp.results:
-			results = append(results, res)
-		case <-wp.done:
-			return results
-		}
+	go func(){
+		wp.wg.Wait()
+		close(wp.results)
+	}()
+	for res := range wp.results {
+		results = append(results, res)
 	}
+
+	return results
 }
 
 func (wp *WorkerPool) StreamResults(receiver chan<- Result) {
 	wp.isReturning.Lock()
 	defer wp.isReturning.Unlock()
 
-	for {
-		select {
-		case res := <-wp.results:
-			receiver <- res
-		case <-wp.done:
-			close(receiver)
-			return
-		}
+	go func() {
+		wp.wg.Wait()
+		close(wp.results)
+	}()
+	for res := range wp.results {
+		receiver <- res
 	}
+
 }
 
 type Result struct {

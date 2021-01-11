@@ -16,6 +16,7 @@ import (
 
 // SSH utilities
 
+// NewSSHConfig: take in some common arguments and return an already-populated ssh.ClientConfig
 func NewSSHConfig(checkHostKey bool, knownHostsFile, privateKeyFile, remoteUser string) (ssh.ClientConfig, error) {
 	var conf ssh.ClientConfig
 	var callback ssh.HostKeyCallback
@@ -48,6 +49,8 @@ func NewSSHConfig(checkHostKey bool, knownHostsFile, privateKeyFile, remoteUser 
 
 // hosts parsing utilities
 
+// ParseHostsList: uses the provided regex and formatter to return a list of hosts
+// regex interprets the first grouping as the host string to format + return
 func ParseHostsList(path string, re *regexp.Regexp, formatter func(string) string) ([]string, error) {
 	var hosts []string
 
@@ -69,12 +72,23 @@ func ParseHostsList(path string, re *regexp.Regexp, formatter func(string) strin
 	return hosts, nil
 }
 
+// Append22: return the host string with `:22` appended if not already present
 func Append22(host string) string {
 	parts := strings.Split(host, ":")
-	if len(parts) == 1 {
-		return fmt.Sprintf("%s:%d", host, 22)
+	res := host
+	if len(parts) == 1 && parts[0] != "" {
+		res = fmt.Sprintf("%s:%d", host, 22)
+	} else if len(parts) > 1 {
+		last := parts[len(parts) - 1]
+		switch {
+		case last == "":
+			res = fmt.Sprintf("%s%d", host, 22)
+		case last != "22":
+			res = fmt.Sprintf("%s:%d", host, 22)
+		default:
+		}
 	}
-	return host
+	return res
 }
 
 // logging utilities
@@ -100,5 +114,4 @@ func (l *SyncLogger) Fatal(msg string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.Logger.Fatalf("FATAL: %s", msg)
-	os.Exit(1)
 }
