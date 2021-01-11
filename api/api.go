@@ -15,7 +15,7 @@ type WorkerPool struct {
 	sshConfig   ssh.ClientConfig
 	wg          sync.WaitGroup
 	isReturning sync.Mutex
-	do func()
+	do          func()
 }
 
 func CreatePool(size int, cmd string, config ssh.ClientConfig) *WorkerPool {
@@ -75,11 +75,12 @@ func (wp *WorkerPool) ScheduleJobs(hosts []string) {
 func (wp *WorkerPool) Wait() {
 	wp.isReturning.Lock()
 	defer wp.isReturning.Unlock()
-	go func(){
+	go func() {
 		wp.wg.Wait()
 		close(wp.results)
 	}()
-	for _ = range wp.results {}
+	for _ = range wp.results {
+	}
 }
 
 func (wp *WorkerPool) WaitAndReturnResults() []Result {
@@ -87,7 +88,7 @@ func (wp *WorkerPool) WaitAndReturnResults() []Result {
 	wp.isReturning.Lock()
 	defer wp.isReturning.Unlock()
 
-	go func(){
+	go func() {
 		wp.wg.Wait()
 		close(wp.results)
 	}()

@@ -79,7 +79,7 @@ func Append22(host string) string {
 	if len(parts) == 1 && parts[0] != "" {
 		res = fmt.Sprintf("%s:%d", host, 22)
 	} else if len(parts) > 1 {
-		last := parts[len(parts) - 1]
+		last := parts[len(parts)-1]
 		switch {
 		case last == "":
 			res = fmt.Sprintf("%s%d", host, 22)

@@ -19,9 +19,9 @@ func TestNewSSHConfig(t *testing.T) {
 	pkey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	pkeyBytes := x509.MarshalPKCS1PrivateKey(pkey)
 	pkeyPEM := pem.Block{
-		Type: "RSA PRIVATE KEY",
+		Type:    "RSA PRIVATE KEY",
 		Headers: nil,
-		Bytes: pkeyBytes,
+		Bytes:   pkeyBytes,
 	}
 	_ = ioutil.WriteFile(tempKey, pem.EncodeToMemory(&pkeyPEM), 0600)
 
@@ -60,7 +60,7 @@ foo bar baz
 	if err := ioutil.WriteFile(fmt.Sprintf("%s/test-hosts.list", os.TempDir()), []byte(hosts), 0600); err != nil {
 		t.Fatalf("ioutil.WriteFile: %v", err)
 	}
-	defer func(){ _ = os.Remove(tempFile) }()
+	defer func() { _ = os.Remove(tempFile) }()
 	re, _ := regexp.Compile(`^([^\s]*)\b`)
 	{
 		got, err := ParseHostsList(tempFile, re, Append22)
@@ -94,7 +94,7 @@ func TestAppend22(t *testing.T) {
 
 type fakeAddr struct {
 	network string
-	host string
+	host    string
 }
 
 func (f fakeAddr) Network() string {

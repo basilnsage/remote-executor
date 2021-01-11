@@ -9,10 +9,10 @@ import (
 	"testing"
 )
 
-var tests = map[string]struct{
+var tests = map[string]struct {
 	iterations int
-	nWorkers int
-	hosts []string
+	nWorkers   int
+	hosts      []string
 }{
 	"small pool few jobs": {
 		10,
