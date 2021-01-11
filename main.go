@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/basilnsage/remote-executor/api"
 	"github.com/basilnsage/remote-executor/utils"
@@ -18,6 +19,7 @@ var (
 	remoteUser     string
 	pkeyPath       string
 	knownHostsPath string
+	summarize      bool
 )
 
 func init() {
@@ -45,6 +47,7 @@ func init() {
 		fmt.Sprintf("%s/.ssh/known_hosts", homeDir),
 		"path to known hosts file",
 	)
+	flag.BoolVar(&summarize, "summarize", false, "report a list of failed hosts")
 }
 
 func main() {
@@ -90,6 +93,7 @@ func main() {
 	go pool.ScheduleJobs(hosts)
 
 	// collect and log results
+	var failed []string
 	results := make(chan api.Result, len(hosts))
 	go func() {
 		pool.StreamResults(results)
@@ -98,8 +102,15 @@ func main() {
 	for res := range results {
 		if res.Err != nil {
 			syncLogger.Error(fmt.Sprintf("%s\n%s\n%s", res.Host, res.Err.Error(), string(res.Output)))
+			if summarize {
+				failed = append(failed, res.Host)
+			}
 		} else {
 			syncLogger.Info(string(res.Output))
 		}
+	}
+	if summarize {
+		logMsg := fmt.Sprintf("failed hosts:\n%s", strings.Join(failed, "\n"))
+		syncLogger.Info(logMsg)
 	}
 }

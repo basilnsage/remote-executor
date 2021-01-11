@@ -20,6 +20,9 @@ The program can be tuned with the following flags:
     - default: $HOME/.ssh/id_rsa
 - --known-hosts </path/to/known_hosts/file>
     - default: %HOME/.ssh/known_hosts
+- --summarize=true/false
+    - default: false
+    - note: displays failed hosts at the end of the run
     
 ### Running
 CLI usage:
