@@ -6,11 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/google/go-cmp/cmp"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestNewSSHConfig(t *testing.T) {

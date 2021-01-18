@@ -47,10 +47,10 @@ func NewSSHConfig(checkHostKey bool, knownHostsFile, privateKeyFile, remoteUser 
 	}, nil
 }
 
-// hosts parsing utilities
+// Hosts parsing utilities
 
-// ParseHostsList: uses the provided regex and formatter to return a list of hosts
-// regex interprets the first grouping as the host string to format + return
+// ParseHostsList: uses the provided regex and formatter to return a list of hosts.
+// Regex interprets the first grouping as the host string to format + return.
 func ParseHostsList(path string, re *regexp.Regexp, formatter func(string) string) ([]string, error) {
 	var hosts []string
 
@@ -72,7 +72,7 @@ func ParseHostsList(path string, re *regexp.Regexp, formatter func(string) strin
 	return hosts, nil
 }
 
-// Append22: return the host string with `:22` appended if not already present
+// Append22: return the host string with `:22` appended if not already present.
 func Append22(host string) string {
 	parts := strings.Split(host, ":")
 	res := host
@@ -91,7 +91,7 @@ func Append22(host string) string {
 	return res
 }
 
-// logging utilities
+// Logging utilities
 
 type SyncLogger struct {
 	Logger *log.Logger
@@ -111,7 +111,7 @@ func (l *SyncLogger) Error(msg string) {
 }
 
 func (l *SyncLogger) Fatal(msg string) {
+	// no need to Unlock since logger.Fatalf will call os.Exit(1) and terminate the program
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	l.Logger.Fatalf("FATAL: %s", msg)
 }

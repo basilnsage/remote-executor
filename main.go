@@ -17,7 +17,7 @@ var (
 	checkHostKey   bool
 	regexExpr      string
 	remoteUser     string
-	pkeyPath       string
+	privateKeyPath string
 	knownHostsPath string
 	summarize      bool
 )
@@ -27,7 +27,7 @@ func init() {
 	userName, _ := os.LookupEnv("USER")
 
 	flag.IntVar(&numWorkers, "concurrency", 100, "size of worker pool")
-	flag.BoolVar(&checkHostKey, "check-hostkey", true, "check remote host key")
+	flag.BoolVar(&checkHostKey, "check-hostkey", false, "check remote host key")
 	flag.StringVar(
 		&regexExpr,
 		"parser",
@@ -36,7 +36,7 @@ func init() {
 	)
 	flag.StringVar(&remoteUser, "user", userName, "remote user")
 	flag.StringVar(
-		&pkeyPath,
+		&privateKeyPath,
 		"private-key",
 		fmt.Sprintf("%s/.ssh/id_rsa", homeDir),
 		"ssh private key to use",
@@ -60,13 +60,14 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 2 {
-		syncLogger.Fatal(fmt.Sprintf("need 2 positional arugments, found: %d", len(args)))
+		syncLogger.Fatal(fmt.Sprintf("need 2 positional arguments, found: %d", len(args)))
 	}
 	hostList := args[0]
 	remoteCommand := args[1]
 
 	// create ssh client config
-	sshConf, err := utils.NewSSHConfig(checkHostKey, knownHostsPath, pkeyPath, remoteUser)
+
+	sshConf, err := utils.NewSSHConfig(checkHostKey, knownHostsPath, privateKeyPath, remoteUser)
 	if err != nil {
 		syncLogger.Fatal(fmt.Sprintf("unable to parse flags: %v", err))
 	}
@@ -84,7 +85,7 @@ func main() {
 	}
 
 	// create worker pool
-	pool := api.CreatePool(numWorkers, remoteCommand, sshConf)
+	pool := api.CreatePool(numWorkers, len(hosts), remoteCommand, sshConf)
 
 	// schedule workers
 	pool.ScheduleWorkers()

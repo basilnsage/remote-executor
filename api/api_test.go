@@ -1,12 +1,13 @@
 package api
 
 import (
-	"github.com/google/go-cmp/cmp"
-	"golang.org/x/crypto/ssh"
 	"math/rand"
 	"sort"
 	"strconv"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"golang.org/x/crypto/ssh"
 )
 
 var tests = map[string]struct {
@@ -42,7 +43,7 @@ func TestMainFlow(t *testing.T) {
 			var good, bad float64
 			var toLog string
 			for i := 0; i < test.iterations; i++ {
-				wp := CreatePool(test.nWorkers, "noop", ssh.ClientConfig{})
+				wp := CreatePool(test.nWorkers, len(test.hosts), "noop", ssh.ClientConfig{})
 				wp.do = wp.testWorker
 				wp.ScheduleWorkers()
 				go wp.ScheduleJobs(test.hosts)
