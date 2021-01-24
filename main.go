@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/basilnsage/remote-executor/api"
 	"github.com/basilnsage/remote-executor/utils"
@@ -50,6 +52,22 @@ func init() {
 	flag.BoolVar(&summarize, "summarize", false, "report a list of failed hosts")
 }
 
+type failedHosts struct {
+	failed []string
+	mu     sync.Mutex
+}
+
+func newFailedHosts() *failedHosts {
+	var hosts []string
+	return &failedHosts{failed: hosts}
+}
+
+func (fh *failedHosts) append(host string) {
+	fh.mu.Lock()
+	defer fh.mu.Unlock()
+	fh.failed = append(fh.failed, host)
+}
+
 func main() {
 	syncLogger := utils.SyncLogger{
 		Logger: log.New(os.Stdout, "remote-executor: ", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile),
@@ -85,33 +103,35 @@ func main() {
 	}
 
 	// create worker pool
-	pool := api.CreatePool(numWorkers, len(hosts), remoteCommand, sshConf)
+	pool := api.CreatePool(numWorkers, remoteCommand, sshConf)
 
 	// schedule workers
 	pool.ScheduleWorkers()
 
-	// schedule jobs; i.e. run remoteCommand against hosts
-	go pool.ScheduleJobs(hosts)
+	fh := newFailedHosts()
 
-	// collect and log results
-	var failed []string
-	results := make(chan api.Result, len(hosts))
-	go func() {
-		pool.StreamResults(results)
-		close(results)
-	}()
-	for res := range results {
-		if res.Err != nil {
-			syncLogger.Error(fmt.Sprintf("%s\n%s\n%s", res.Host, res.Err.Error(), string(res.Output)))
-			if summarize {
-				failed = append(failed, res.Host)
+	var wg sync.WaitGroup
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(h string) {
+			ctx := context.Background()
+			res, err := pool.RunJob(ctx, h)
+			if err != nil {
+				syncLogger.Error(fmt.Sprintf("error running command against host: %s, error: %v", h, err))
+				fh.append(h)
+			} else if res.Err != nil {
+				syncLogger.Error(fmt.Sprintf("%s\n%s\n%s", res.Host, res.Err.Error(), string(res.Output)))
+				fh.append(h)
+			} else {
+				syncLogger.Info(string(res.Output))
 			}
-		} else {
-			syncLogger.Info(string(res.Output))
-		}
+			wg.Done()
+		}(host)
 	}
-	if summarize {
-		logMsg := fmt.Sprintf("failed hosts:\n%s", strings.Join(failed, "\n"))
+	wg.Wait()
+
+	if summarize && len(fh.failed) > 0 {
+		logMsg := fmt.Sprintf("failed hosts:\n%s", strings.Join(fh.failed, "\n"))
 		syncLogger.Info(logMsg)
 	}
 }
